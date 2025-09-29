@@ -1,49 +1,72 @@
 use anyhow::{Context, Result};
-use std::io::{self, Read, BufRead};
+use std::io::{self, BufRead, Read};
 use std::path;
 
 mod scanner;
 mod token;
 
-fn run(source: String) {
+#[derive(Debug)]
+pub struct TaalError {
+    message: String,
+    message_where: String,
+    line: usize,
+}
+
+impl std::fmt::Display for TaalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "TaalError [line {}] {}: {}",
+            self.line, self.message_where, self.message
+        )
+    }
+}
+
+impl std::error::Error for TaalError {}
+
+fn run(source: String) -> Result<(), TaalError> {
     // Placeholder for file execution logic
     println!("Running...");
     let scanner = scanner::Scanner::new(source);
     scanner.scan_tokens();
+
+    return Err(TaalError {
+        message: "test".to_string(),
+        message_where: "test2".to_string(),
+        line: 3,
+    });
 }
 
-fn run_prompt() -> Result<(), anyhow::Error> {
-    // Placeholder for file execution logic
+fn run_prompt_mode() -> Result<(), anyhow::Error> {
     println!("------------------------------------------");
     println!("PROMPT MODE (Press Ctrl+D to exit)");
     println!("------------------------------------------");
+
     for line in std::io::stdin().lock().lines() {
         let line = line.context("Failed to read line from stdin")?;
-        run(line);
+        run(line)?;
     }
+
     Ok(())
 }
 
-fn run_file(path: path::PathBuf) -> Result<(), anyhow::Error> {
-    // Placeholder for file execution logic
+fn run_file_mode(path: path::PathBuf) -> Result<(), anyhow::Error> {
     println!("------------------------------------------");
     println!("FILE MODE ({:?})", path);
     println!("------------------------------------------");
+
     let mut file = std::fs::File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-
-    println!("File contents: {}", contents);
-
-    run("".to_string());
+    run(contents)?;
 
     Ok(())
 }
 
 fn run_taal(path: Option<path::PathBuf>) -> Result<(), anyhow::Error> {
     match path {
-        Some(p) => run_file(p),
-        None => run_prompt(),
+        Some(p) => run_file_mode(p),
+        None => run_prompt_mode(),
     }
 }
 

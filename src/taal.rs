@@ -1,48 +1,29 @@
-use std::error::Error;
-use std::fs::File;
+use anyhow::{Context, Result};
 use std::io::Read;
 use std::path;
-use std::fmt::Display;
 
 mod scanner;
 mod token;
 
-#[derive(Debug)]
-enum TaalError {
-    IoError(std::io::Error),
-    ParseError(String),
+fn run(source: String) {
+    // Placeholder for file execution logic
+    println!("Running...");
+    let scanner = scanner::Scanner::new(source);
+    scanner.scan_tokens();
 }
 
-impl From<std::io::Error> for TaalError {
-    fn from (err: std::io::Error) -> Self {
-        TaalError::IoError(err)
-    }
-}
-
-impl From<String> for TaalError {
-    fn from (err: String) -> Self {
-        TaalError::ParseError(err)
-    }
-}
-
-impl Display for TaalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TaalError::IoError(e) => write!(f, "Taal IO error: {}", e),
-            TaalError::ParseError(msg) => write!(f, "Taal parse error: {}", msg),
-        }
-    }
-}
-
-impl Error for TaalError {}
-
-fn run_prompt() {
+fn run_prompt() -> Result<(), anyhow::Error> {
     // Placeholder for file execution logic
     println!("Running prompt...");
+    let mut contents = String::new();
+    std::io::stdin()
+        .read_line(&mut contents)
+        .context("Failed to read line from stdin")?;
     run("".to_string());
+    Ok(())
 }
 
-fn run_file(path: path::PathBuf) -> Result<(), TaalError> {
+fn run_file(path: path::PathBuf) -> Result<(), anyhow::Error> {
     // Placeholder for file execution logic
     println!("Executing file: {:?}", path);
     let mut file = std::fs::File::open(path)?;
@@ -56,20 +37,16 @@ fn run_file(path: path::PathBuf) -> Result<(), TaalError> {
     Ok(())
 }
 
-fn run(source: String) {
-    // Placeholder for file execution logic
-    println!("Running...");
-    let scanner = scanner::Scanner::new(source);
-    scanner.scan_tokens();
+fn run_taal(path: Option<path::PathBuf>) -> Result<(), anyhow::Error> {
+    match path {
+        Some(p) => run_file(p),
+        None => run_prompt(),
+    }
 }
 
 pub fn taal(path: Option<path::PathBuf>) {
-    println!("Running pret with path: {:?}", path);
-    if let Some(p) = path {
-        if let Err(e) = run_file(p) {
-            eprintln!("{e}");
-        }
-    } else {
-        run_prompt();
+    println!("Running taal with path: {:?}", path);
+    if let Err(e) = run_taal(path) {
+        eprintln!("Error: {:?}", e);
     }
 }

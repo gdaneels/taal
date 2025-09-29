@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::io::Read;
+use std::io::{self, Read, BufRead};
 use std::path;
 
 mod scanner;
@@ -14,18 +14,21 @@ fn run(source: String) {
 
 fn run_prompt() -> Result<(), anyhow::Error> {
     // Placeholder for file execution logic
-    println!("Running prompt...");
-    let mut contents = String::new();
-    std::io::stdin()
-        .read_line(&mut contents)
-        .context("Failed to read line from stdin")?;
-    run("".to_string());
+    println!("------------------------------------------");
+    println!("PROMPT MODE (Press Ctrl+D to exit)");
+    println!("------------------------------------------");
+    for line in std::io::stdin().lock().lines() {
+        let line = line.context("Failed to read line from stdin")?;
+        run(line);
+    }
     Ok(())
 }
 
 fn run_file(path: path::PathBuf) -> Result<(), anyhow::Error> {
     // Placeholder for file execution logic
-    println!("Executing file: {:?}", path);
+    println!("------------------------------------------");
+    println!("FILE MODE ({:?})", path);
+    println!("------------------------------------------");
     let mut file = std::fs::File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;

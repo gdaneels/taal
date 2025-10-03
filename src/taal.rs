@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::io::{self, BufRead, Read};
+use std::io::{BufRead, Read};
 use std::path;
 
 mod scanner;
@@ -9,7 +9,7 @@ mod token;
 pub struct TaalError {
     message: String,
     message_where: String,
-    line: usize,
+    line: u32,
 }
 
 impl std::fmt::Display for TaalError {
@@ -27,7 +27,7 @@ impl std::error::Error for TaalError {}
 fn run(source: String) -> Result<(), TaalError> {
     // Placeholder for file execution logic
     println!("Running...");
-    let scanner = scanner::Scanner::new(source);
+    let mut scanner = scanner::Scanner::new(source);
     scanner.scan_tokens();
 
     return Err(TaalError {

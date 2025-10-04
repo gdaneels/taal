@@ -25,51 +25,86 @@ impl Scanner {
         }
     }
 
+    /// Advance the current character in the lexeme by one
+    fn advance(&mut self) {
+        self.current_in_lexeme += 1;
+    }
+
+    /// Returns true if the next character is the end of the source
     fn at_end(&self) -> bool {
         // we assume that every byte is character (so our language "taal" can exists in ASCII)
-        self.current_in_lexeme >= (self.source.len() as u32)
+        self.current_in_lexeme + 1 >= (self.source.len() as u32)
     }
 
-    fn is_expected(&self, expected: u8) -> bool {
+    fn peek_next(&self) -> u8 {
         if self.at_end() {
-            return false;
+            return b'\0';
         }
-        self.source[self.current_in_lexeme as usize] == expected
+        self.source[(self.current_in_lexeme + 1) as usize]
     }
 
-    /// If the next character is `expected`, consume it (advance to next char) and return `first_type`, otherwise return
-    fn match_next(
-        &mut self,
-        expected: u8,
-        first_type: TokenType,
-        second_type: TokenType,
-    ) -> TokenType {
-        if self.is_expected(expected) {
-            self.current_in_lexeme += 1;
-            return first_type;
-        }
-        second_type
+    fn add_token(&mut self, token_type: TokenType) {
+        let text =
+            self.source[self.start_of_lexeme as usize..self.current_in_lexeme as usize].to_vec();
+        self.tokens
+            .push(Token::new(token_type, text, None, self.line));
     }
 
-    fn get_token_type(&mut self) -> Result<TokenType, TaalError> {
+    fn scan_token(&mut self) -> Result<(), TaalError> {
         let current_character = self.source[self.current_in_lexeme as usize];
-        // advance to next character, as we are consuming this one
-        self.current_in_lexeme += 1;
-        let token_type = match current_character {
-            b'(' => TokenType::LeftParen,
-            b')' => TokenType::RightParen,
-            b'{' => TokenType::LeftBrace,
-            b'}' => TokenType::RightBrace,
-            b',' => TokenType::Comma,
-            b'.' => TokenType::Dot,
-            b'-' => TokenType::Minus,
-            b'+' => TokenType::Plus,
-            b';' => TokenType::Semicolon,
-            b'*' => TokenType::Star,
-            b'!' => self.match_next(b'=', TokenType::BangEqual, TokenType::Bang),
-            b'=' => self.match_next(b'=', TokenType::EqualEqual, TokenType::Equal),
-            b'<' => self.match_next(b'=', TokenType::LessEqual, TokenType::Less),
-            b'>' => self.match_next(b'=', TokenType::GreaterEqual, TokenType::Greater),
+        match current_character {
+            b'(' => self.add_token(TokenType::LeftParen),
+            b')' => self.add_token(TokenType::RightParen),
+            b'{' => self.add_token(TokenType::LeftBrace),
+            b'}' => self.add_token(TokenType::RightBrace),
+            b',' => self.add_token(TokenType::Comma),
+            b'.' => self.add_token(TokenType::Dot),
+            b'-' => self.add_token(TokenType::Minus),
+            b'+' => self.add_token(TokenType::Plus),
+            b';' => self.add_token(TokenType::Semicolon),
+            b'*' => self.add_token(TokenType::Star),
+            b'!' => {
+                if self.peek_next() == b'=' {
+                    self.advance();
+                    self.add_token(TokenType::BangEqual);
+                } else {
+                    self.add_token(TokenType::Bang);
+                }
+            }
+            b'=' => {
+                if self.peek_next() == b'=' {
+                    self.advance();
+                    self.add_token(TokenType::EqualEqual);
+                } else {
+                    self.add_token(TokenType::Equal);
+                }
+            }
+            b'<' => {
+                if self.peek_next() == b'=' {
+                    self.advance();
+                    self.add_token(TokenType::LessEqual);
+                } else {
+                    self.add_token(TokenType::Less);
+                }
+            }
+            b'>' => {
+                if self.peek_next() == b'=' {
+                    self.advance();
+                    self.add_token(TokenType::GreaterEqual);
+                } else {
+                    self.add_token(TokenType::Greater);
+                }
+            }
+            b'/' => {
+                if self.peek_next() == b'/' {
+                    self.advance();
+                    while (self.peek_next() != b'\n') && !self.at_end() {
+                        self.advance();
+                    }
+                } else {
+                    self.add_token(TokenType::Slash);
+                }
+            }
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),
@@ -79,17 +114,9 @@ impl Scanner {
             }
         };
 
-        Ok(token_type)
-    }
-
-    fn scan_token(&mut self) -> Result<(), TaalError> {
-        let token_type = self.get_token_type()?;
-        // exclude the current character, as the get_token_type() function should have advanced until the next charactor of a new lexeme
-        let text =
-            self.source[self.start_of_lexeme as usize..self.current_in_lexeme as usize].to_vec();
-        self.tokens
-            .push(Token::new(token_type, text, None, self.line));
         println!("Tokens: {:?}", self.tokens);
+
+        self.advance();
 
         Ok(())
     }

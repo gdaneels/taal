@@ -24,17 +24,13 @@ impl std::fmt::Display for TaalError {
 
 impl std::error::Error for TaalError {}
 
-fn run(source: String) -> Result<(), TaalError> {
+type SourceType = Vec<u8>;
+
+fn run(source: SourceType) -> Result<(), TaalError> {
     // Placeholder for file execution logic
     println!("Running...");
     let mut scanner = scanner::Scanner::new(source);
-    scanner.scan_tokens();
-
-    return Err(TaalError {
-        message: "test".to_string(),
-        message_where: "test2".to_string(),
-        line: 3,
-    });
+    scanner.scan_tokens()
 }
 
 fn run_prompt_mode() -> Result<(), anyhow::Error> {
@@ -44,7 +40,7 @@ fn run_prompt_mode() -> Result<(), anyhow::Error> {
 
     for line in std::io::stdin().lock().lines() {
         let line = line.context("Failed to read line from stdin")?;
-        run(line)?;
+        run(line.into_bytes())?;
     }
 
     Ok(())
@@ -58,7 +54,7 @@ fn run_file_mode(path: path::PathBuf) -> Result<(), anyhow::Error> {
     let mut file = std::fs::File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    run(contents)?;
+    run(contents.into_bytes())?;
 
     Ok(())
 }

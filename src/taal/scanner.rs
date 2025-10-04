@@ -1,5 +1,5 @@
 use super::{
-    TaalError,
+    SourceType, TaalError,
     token::{Token, TokenType},
 };
 
@@ -7,7 +7,7 @@ pub struct Scanner {
     // We use the String type to enjoy the print functionality, but we assume that each character
     // fits nicely in 1 byte. That is, we assume the ASCII encoding to fit our entire taal
     // language. When traversing taal source code, we should be safe to convert the string it to bytes().
-    source: String,
+    source: SourceType,
     tokens: Vec<Token>,
     line: u32,
     start_of_lexeme: u32,   // index of line, of start character of lexeme
@@ -15,7 +15,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn new(source: String) -> Self {
+    pub fn new(source: SourceType) -> Self {
         Self {
             source,
             tokens: vec![],
@@ -27,11 +27,35 @@ impl Scanner {
 
     fn at_end(&self) -> bool {
         // we assume that every byte is character (so our language "taal" can exists in ASCII)
-        self.current_in_lexeme >= (self.source.bytes().count() as u32)
+        self.current_in_lexeme >= (self.source.len() as u32)
     }
 
-    fn get_token_type(&self, character: u8) -> Result<TokenType, TaalError> {
-        let token_type = match character {
+    fn is_expected(&self, expected: u8) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        self.source[self.current_in_lexeme as usize] == expected
+    }
+
+    /// If the next character is `expected`, consume it (advance to next char) and return `first_type`, otherwise return
+    fn match_next(
+        &mut self,
+        expected: u8,
+        first_type: TokenType,
+        second_type: TokenType,
+    ) -> TokenType {
+        if self.is_expected(expected) {
+            self.current_in_lexeme += 1;
+            return first_type;
+        }
+        second_type
+    }
+
+    fn get_token_type(&mut self) -> Result<TokenType, TaalError> {
+        let current_character = self.source[self.current_in_lexeme as usize];
+        // advance to next character, as we are consuming this one
+        self.current_in_lexeme += 1;
+        let token_type = match current_character {
             b'(' => TokenType::LeftParen,
             b')' => TokenType::RightParen,
             b'{' => TokenType::LeftBrace,
@@ -42,6 +66,10 @@ impl Scanner {
             b'+' => TokenType::Plus,
             b';' => TokenType::Semicolon,
             b'*' => TokenType::Star,
+            b'!' => self.match_next(b'=', TokenType::BangEqual, TokenType::Bang),
+            b'=' => self.match_next(b'=', TokenType::EqualEqual, TokenType::Equal),
+            b'<' => self.match_next(b'=', TokenType::LessEqual, TokenType::Less),
+            b'>' => self.match_next(b'=', TokenType::GreaterEqual, TokenType::Greater),
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),
@@ -55,21 +83,19 @@ impl Scanner {
     }
 
     fn scan_token(&mut self) -> Result<(), TaalError> {
-        if let Some(character) = self.source.bytes().nth(self.current_in_lexeme as usize) {
-            let token_type = self.get_token_type(character)?;
-            let text = "TODO".to_string(); // maybe we can save the lexeme as a vec<u8> whenever we
+        let token_type = self.get_token_type()?;
+        // exclude the current character, as the get_token_type() function should have advanced until the next charactor of a new lexeme
+        let text =
+            self.source[self.start_of_lexeme as usize..self.current_in_lexeme as usize].to_vec();
+        self.tokens
+            .push(Token::new(token_type, text, None, self.line));
+        println!("Tokens: {:?}", self.tokens);
 
-            self.tokens
-                .push(Token::new(token_type, text, None, self.line));
-        }
-
-        // advance to next character
-        self.current_in_lexeme += 1;
         Ok(())
     }
 
     pub fn scan_tokens(&mut self) -> Result<(), TaalError> {
-        println!("Scanning tokens from source of length.");
+        println!("Scanning tokens...");
 
         while !self.at_end() {
             self.start_of_lexeme = self.current_in_lexeme;
@@ -78,7 +104,7 @@ impl Scanner {
 
         // TODO parameters have to be corrected
         self.tokens
-            .push(Token::new(TokenType::Eof, "".to_string(), None, 0));
+            .push(Token::new(TokenType::Eof, vec![], None, 0));
 
         Ok(())
     }

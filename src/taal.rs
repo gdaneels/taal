@@ -9,7 +9,7 @@ mod token;
 pub struct TaalError {
     message: String,
     message_where: String,
-    line: u32,
+    line: usize,
 }
 
 impl std::fmt::Display for TaalError {

@@ -9,9 +9,9 @@ pub struct Scanner {
     // language. When traversing taal source code, we should be safe to convert the string it to bytes().
     source: SourceType,
     tokens: Vec<Token>,
-    line: u32,
-    start_of_lexeme: u32,   // index of line, of start character of lexeme
-    current_in_lexeme: u32, // index of line, of current character in lexeme
+    line: usize,
+    start_of_lexeme: usize,   // index of line, of start character of lexeme
+    current_in_lexeme: usize, // index of line, of current character in lexeme
 }
 
 impl Scanner {
@@ -30,24 +30,29 @@ impl Scanner {
         self.current_in_lexeme += 1;
     }
 
-    /// Returns true if the next character is the end of the source
+    /// Returns true if the current character is the end of the source
     fn at_end(&self) -> bool {
         // we assume that every byte is character (so our language "taal" can exists in ASCII)
-        self.current_in_lexeme + 1 >= (self.source.len() as u32)
+        self.current_in_lexeme >= self.source.len()
+    }
+
+    /// Returns true if the next character is the end of the source
+    fn peek_is_end(&self) -> bool {
+        // we assume that every byte is character (so our language "taal" can exists in ASCII)
+        self.current_in_lexeme + 1 >= self.source.len()
     }
 
     fn peek_next(&self) -> u8 {
-        if self.at_end() {
+        if self.peek_is_end() {
             return b'\0';
         }
-        self.source[(self.current_in_lexeme + 1) as usize]
+        self.source[self.current_in_lexeme + 1]
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        let text =
-            self.source[self.start_of_lexeme as usize..self.current_in_lexeme as usize].to_vec();
+        // let text = self.source[self.start_of_lexeme as usize..self.current_in_lexeme as usize].to_vec();
         self.tokens
-            .push(Token::new(token_type, text, None, self.line));
+            .push(Token::new(token_type, vec![], None, self.line));
     }
 
     fn match_and_add_token(
@@ -64,8 +69,33 @@ impl Scanner {
         }
     }
 
+    fn match_string(&mut self) -> Result<(), TaalError> {
+        while self.peek_next() != b'"' && !self.peek_is_end() {
+            if self.peek_next() == b'\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.peek_is_end() {
+            return Err(TaalError {
+                message: "Unterminated string".to_string(),
+                message_where: "".to_string(),
+                line: self.line,
+            });
+        }
+
+        // consume the closing "
+        self.advance();
+
+        let value = &self.source[self.start_of_lexeme..(self.current_in_lexeme - 1)];
+        // TODO add value
+        self.add_token(TokenType::String);
+        Ok(())
+    }
+
     fn scan_token(&mut self) -> Result<(), TaalError> {
-        let current_character = self.source[self.current_in_lexeme as usize];
+        let current_character = self.source[self.current_in_lexeme];
         match current_character {
             b'(' => self.add_token(TokenType::LeftParen),
             b')' => self.add_token(TokenType::RightParen),
@@ -84,7 +114,7 @@ impl Scanner {
             b'/' => {
                 if self.peek_next() == b'/' {
                     self.advance();
-                    while (self.peek_next() != b'\n') && !self.at_end() {
+                    while (self.peek_next() != b'\n') && !self.peek_is_end() {
                         self.advance();
                     }
                 } else {
@@ -95,6 +125,7 @@ impl Scanner {
                 // Ignore whitespace.
             }
             b'\n' => self.line += 1,
+            b'"' => self.match_string()?,
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),
@@ -103,9 +134,6 @@ impl Scanner {
                 });
             }
         };
-
-        // go to next character 
-        self.advance();
 
         Ok(())
     }
@@ -116,6 +144,9 @@ impl Scanner {
         while !self.at_end() {
             self.start_of_lexeme = self.current_in_lexeme;
             self.scan_token()?;
+
+            // go to first character of next lexeme/token
+            self.advance();
         }
 
         // TODO parameters have to be corrected

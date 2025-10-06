@@ -69,10 +69,11 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: SourceType, literal: Option<u32>, line: u32) -> Self {
+    pub fn new<T>(token_type: TokenType, lexeme: T, literal: Option<u32>, line: u32) -> Self
+    where T: Into<SourceType>,{
         Self {
             token_type,
-            lexeme,
+            lexeme: lexeme.into(),
             literal,
             line,
         }

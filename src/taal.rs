@@ -24,12 +24,30 @@ impl std::fmt::Display for TaalError {
 
 impl std::error::Error for TaalError {}
 
-type SourceType = Vec<u8>;
+#[derive(Debug)]
+struct SourceType(Vec<u8>);
 
-fn run(source: SourceType) -> Result<(), TaalError> {
+impl From<Vec<u8>> for SourceType {
+    fn from(value: Vec<u8>) -> Self {
+        SourceType(value)
+    }
+}
+
+impl std::ops::Deref for SourceType {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn run<T>(source: T) -> Result<(), TaalError>
+where
+    T: Into<SourceType>,
+{
     // Placeholder for file execution logic
     println!("Running...");
-    let mut scanner = scanner::Scanner::new(source);
+    let mut scanner = scanner::Scanner::new(source.into());
     scanner.scan_tokens()
 }
 

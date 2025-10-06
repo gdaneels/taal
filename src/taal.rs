@@ -48,7 +48,9 @@ where
     // Placeholder for file execution logic
     println!("Running...");
     let mut scanner = scanner::Scanner::new(source.into());
-    scanner.scan_tokens()
+    scanner.scan_tokens()?;
+    scanner.print_tokens();
+    Ok(())
 }
 
 fn run_prompt_mode() -> Result<(), anyhow::Error> {

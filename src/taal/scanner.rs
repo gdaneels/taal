@@ -50,6 +50,20 @@ impl Scanner {
             .push(Token::new(token_type, text, None, self.line));
     }
 
+    fn match_and_add_token(
+        &mut self,
+        expected: u8,
+        match_type: TokenType,
+        mismatch_type: TokenType,
+    ) {
+        if self.peek_next() == expected {
+            self.advance(); // consume matched char
+            self.add_token(match_type);
+        } else {
+            self.add_token(mismatch_type);
+        }
+    }
+
     fn scan_token(&mut self) -> Result<(), TaalError> {
         let current_character = self.source[self.current_in_lexeme as usize];
         match current_character {
@@ -63,38 +77,10 @@ impl Scanner {
             b'+' => self.add_token(TokenType::Plus),
             b';' => self.add_token(TokenType::Semicolon),
             b'*' => self.add_token(TokenType::Star),
-            b'!' => {
-                if self.peek_next() == b'=' {
-                    self.advance();
-                    self.add_token(TokenType::BangEqual);
-                } else {
-                    self.add_token(TokenType::Bang);
-                }
-            }
-            b'=' => {
-                if self.peek_next() == b'=' {
-                    self.advance();
-                    self.add_token(TokenType::EqualEqual);
-                } else {
-                    self.add_token(TokenType::Equal);
-                }
-            }
-            b'<' => {
-                if self.peek_next() == b'=' {
-                    self.advance();
-                    self.add_token(TokenType::LessEqual);
-                } else {
-                    self.add_token(TokenType::Less);
-                }
-            }
-            b'>' => {
-                if self.peek_next() == b'=' {
-                    self.advance();
-                    self.add_token(TokenType::GreaterEqual);
-                } else {
-                    self.add_token(TokenType::Greater);
-                }
-            }
+            b'!' => self.match_and_add_token(b'=', TokenType::BangEqual, TokenType::Bang),
+            b'=' => self.match_and_add_token(b'=', TokenType::EqualEqual, TokenType::Equal),
+            b'<' => self.match_and_add_token(b'=', TokenType::LessEqual, TokenType::Less),
+            b'>' => self.match_and_add_token(b'=', TokenType::GreaterEqual, TokenType::Greater),
             b'/' => {
                 if self.peek_next() == b'/' {
                     self.advance();
@@ -105,6 +91,10 @@ impl Scanner {
                     self.add_token(TokenType::Slash);
                 }
             }
+            b' ' | b'\r' | b'\t' => {
+                // Ignore whitespace.
+            }
+            b'\n' => self.line += 1,
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),
@@ -114,8 +104,7 @@ impl Scanner {
             }
         };
 
-        println!("Tokens: {:?}", self.tokens);
-
+        // go to next character 
         self.advance();
 
         Ok(())
@@ -131,8 +120,12 @@ impl Scanner {
 
         // TODO parameters have to be corrected
         self.tokens
-            .push(Token::new(TokenType::Eof, vec![], None, 0));
+            .push(Token::new(TokenType::Eof, vec![], None, self.line));
 
         Ok(())
+    }
+
+    pub fn print_tokens(&self) {
+        println!("Tokens: {:?}", self.tokens);
     }
 }

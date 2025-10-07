@@ -24,7 +24,7 @@ impl std::fmt::Display for TaalError {
 
 impl std::error::Error for TaalError {}
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct SourceType(Vec<u8>);
 
 impl From<Vec<u8>> for SourceType {

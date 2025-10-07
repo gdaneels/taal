@@ -3,6 +3,7 @@ use super::{
     token::{Token, TokenType},
 };
 
+#[derive(Debug, Default)]
 pub struct Scanner {
     // We use the String type to enjoy the print functionality, but we assume that each character
     // fits nicely in 1 byte. That is, we assume the ASCII encoding to fit our entire taal
@@ -18,10 +19,8 @@ impl Scanner {
     pub fn new(source: SourceType) -> Self {
         Self {
             source,
-            tokens: vec![],
             line: 1,
-            start_of_lexeme: 0,
-            current_in_lexeme: 0,
+            ..Default::default()
         }
     }
 

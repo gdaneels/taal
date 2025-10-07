@@ -53,13 +53,21 @@ impl Scanner {
     where
         T: Into<SourceType>,
     {
-        self.tokens
-            .push(Token::new(token_type, vec![], Some(text.into()), self.line));
+        self.tokens.push(Token::new(
+            token_type,
+            self.source[self.start_of_lexeme..self.current_in_lexeme + 1].to_vec(),
+            Some(text.into()),
+            self.line,
+        ));
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.tokens
-            .push(Token::new(token_type, vec![], None, self.line));
+        self.tokens.push(Token::new(
+            token_type,
+            self.source[self.start_of_lexeme..self.current_in_lexeme + 1].to_vec(),
+            None,
+            self.line,
+        ));
     }
 
     fn match_and_add_token(
@@ -95,7 +103,7 @@ impl Scanner {
         // consume the closing "
         self.advance();
 
-        let value = (&self.source[self.start_of_lexeme..(self.current_in_lexeme - 1)]).to_vec();
+        let value = (&self.source[(self.start_of_lexeme + 1)..self.current_in_lexeme]).to_vec();
         self.add_token_with_literal(TokenType::String, value);
         Ok(())
     }

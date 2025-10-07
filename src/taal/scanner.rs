@@ -49,8 +49,15 @@ impl Scanner {
         self.source[self.current_in_lexeme + 1]
     }
 
+    fn add_token_with_literal<T>(&mut self, token_type: TokenType, text: T)
+    where
+        T: Into<SourceType>,
+    {
+        self.tokens
+            .push(Token::new(token_type, vec![], Some(text.into()), self.line));
+    }
+
     fn add_token(&mut self, token_type: TokenType) {
-        // let text = self.source[self.start_of_lexeme as usize..self.current_in_lexeme as usize].to_vec();
         self.tokens
             .push(Token::new(token_type, vec![], None, self.line));
     }
@@ -88,9 +95,8 @@ impl Scanner {
         // consume the closing "
         self.advance();
 
-        let value = &self.source[self.start_of_lexeme..(self.current_in_lexeme - 1)];
-        // TODO add value
-        self.add_token(TokenType::String);
+        let value = (&self.source[self.start_of_lexeme..(self.current_in_lexeme - 1)]).to_vec();
+        self.add_token_with_literal(TokenType::String, value);
         Ok(())
     }
 
@@ -157,6 +163,8 @@ impl Scanner {
     }
 
     pub fn print_tokens(&self) {
-        println!("Tokens: {:?}", self.tokens);
+        for token in &self.tokens {
+            println!("{}", token);
+        }
     }
 }

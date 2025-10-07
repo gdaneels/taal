@@ -41,6 +41,15 @@ impl std::ops::Deref for SourceType {
     }
 }
 
+impl std::fmt::Display for SourceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match std::str::from_utf8(&self.0) {
+            Ok(s) => write!(f, "{}", s),
+            _ => write!(f, "{:?}", self.0),
+        }
+    }
+}
+
 fn run<T>(source: T) -> Result<(), TaalError>
 where
     T: Into<SourceType>,

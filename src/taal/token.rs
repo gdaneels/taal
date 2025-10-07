@@ -55,21 +55,21 @@ pub enum TokenType {
 pub struct Token {
     token_type: TokenType,
     lexeme: SourceType,
-    literal: Option<u32>, // what should type of literal be?
+    literal: Option<SourceType>, // what should type of literal be?
     line: usize,
 }
 
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.literal {
-            Some(literal) => write!(f, "{:?} {:?} {}", self.token_type, self.lexeme, literal),
-            None => write!(f, "{:?} {:?}", self.token_type, self.lexeme),
+        match &self.literal {
+            Some(literal) => write!(f, "Token [token_type: {:?}, lexeme: {}, literal: {}, line: {}]", self.token_type, self.lexeme, literal, self.line),
+            None => write!(f, "Token [token_type: {:?}, lexeme: {}, literal: [empty], line: {}]", self.token_type, self.lexeme, self.line),
         }
     }
 }
 
 impl Token {
-    pub fn new<T>(token_type: TokenType, lexeme: T, literal: Option<u32>, line: usize) -> Self
+    pub fn new<T>(token_type: TokenType, lexeme: T, literal: Option<SourceType>, line: usize) -> Self
     where T: Into<SourceType>,{
         Self {
             token_type,

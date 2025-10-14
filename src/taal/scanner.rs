@@ -36,16 +36,16 @@ impl Scanner {
     }
 
     /// Returns true if the next character is the end of the source
-    fn peek_is_end(&self) -> bool {
+    fn peek_is_end(&self, index: usize) -> bool {
         // we assume that every byte is character (so our language "taal" can exists in ASCII)
-        self.current_in_lexeme + 1 >= self.source.len()
+        self.current_in_lexeme + index >= self.source.len()
     }
 
-    fn peek_next(&self) -> u8 {
-        if self.peek_is_end() {
+    fn peek(&self, index: usize) -> u8 {
+        if self.peek_is_end(index) {
             return b'\0';
         }
-        self.source[self.current_in_lexeme + 1]
+        self.source[self.current_in_lexeme + index]
     }
 
     fn add_token_with_literal<T>(&mut self, token_type: TokenType, text: T)
@@ -75,7 +75,7 @@ impl Scanner {
         match_type: TokenType,
         mismatch_type: TokenType,
     ) {
-        if self.peek_next() == expected {
+        if self.peek(1) == expected {
             self.advance(); // consume matched char
             self.add_token(match_type);
         } else {
@@ -84,14 +84,14 @@ impl Scanner {
     }
 
     fn match_string(&mut self) -> Result<(), TaalError> {
-        while self.peek_next() != b'"' && !self.peek_is_end() {
-            if self.peek_next() == b'\n' {
+        while self.peek(1) != b'"' && !self.peek_is_end(1) {
+            if self.peek(1) == b'\n' {
                 self.line += 1;
             }
             self.advance();
         }
 
-        if self.peek_is_end() {
+        if self.peek_is_end(1) {
             return Err(TaalError {
                 message: "Unterminated string".to_string(),
                 message_where: "".to_string(),
@@ -104,6 +104,27 @@ impl Scanner {
 
         let value = (&self.source[(self.start_of_lexeme + 1)..self.current_in_lexeme]).to_vec();
         self.add_token_with_literal(TokenType::String, value);
+        Ok(())
+    }
+
+    fn match_number(&mut self) -> Result<(), TaalError> {
+        // consume digits
+        while self.peek(1).is_ascii_digit() {
+            self.advance();
+        }
+
+        if self.peek(1) == b'.' && self.peek(2).is_ascii_digit() {
+            // consume the .
+            self.advance()
+        }
+
+        // consume digits
+        while self.peek(1).is_ascii_digit() {
+            self.advance();
+        }
+
+        let value = (&self.source[(self.start_of_lexeme)..self.current_in_lexeme + 1]).to_vec();
+        self.add_token_with_literal(TokenType::Number, value);
         Ok(())
     }
 
@@ -125,9 +146,9 @@ impl Scanner {
             b'<' => self.match_and_add_token(b'=', TokenType::LessEqual, TokenType::Less),
             b'>' => self.match_and_add_token(b'=', TokenType::GreaterEqual, TokenType::Greater),
             b'/' => {
-                if self.peek_next() == b'/' {
+                if self.peek(1) == b'/' {
                     self.advance();
-                    while (self.peek_next() != b'\n') && !self.peek_is_end() {
+                    while (self.peek(1) != b'\n') && !self.peek_is_end(1) {
                         self.advance();
                     }
                 } else {
@@ -138,7 +159,8 @@ impl Scanner {
                 // Ignore whitespace.
             }
             b'\n' => self.line += 1,
-            b'"' => self.match_string()?,
+            b'"' => self.match_string()?, // match string literals
+            c if c.is_ascii_digit() => self.match_number()?, // match numbers
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),

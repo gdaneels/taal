@@ -3,6 +3,19 @@ use super::{
     token::{Token, TokenType},
 };
 
+trait MyAlpha {
+    fn is_alpha(&self) -> bool;
+}
+
+impl MyAlpha for u8 {
+    fn is_alpha(&self) -> bool {
+        if *self == b'_' || self.is_ascii_alphabetic() {
+            return true;
+        }
+        false
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Scanner {
     // We use the String type to enjoy the print functionality, but we assume that each character
@@ -124,7 +137,19 @@ impl Scanner {
         }
 
         let value = (&self.source[(self.start_of_lexeme)..self.current_in_lexeme + 1]).to_vec();
+        // TODO in the text, they insert a real double here
+        // for us, this conversion still has to happen later
         self.add_token_with_literal(TokenType::Number, value);
+        Ok(())
+    }
+
+    fn match_identifier(&mut self) -> Result<(), TaalError> {
+        // consume alphabetics or _'s, or digits
+        while self.peek(1).is_alpha() || self.peek(1).is_ascii_digit() {
+            self.advance();
+        }
+
+        self.add_token(TokenType::Identifier);
         Ok(())
     }
 
@@ -161,6 +186,7 @@ impl Scanner {
             b'\n' => self.line += 1,
             b'"' => self.match_string()?, // match string literals
             c if c.is_ascii_digit() => self.match_number()?, // match numbers
+            c if c.is_alpha() => self.match_alpha()?,
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),

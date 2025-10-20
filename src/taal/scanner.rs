@@ -3,6 +3,7 @@ use super::{
     token::{Token, TokenType},
 };
 
+/// trait to check if a u8 is alphabetic or underscore
 trait MyAlpha {
     fn is_alpha(&self) -> bool;
 }
@@ -143,14 +144,54 @@ impl Scanner {
         Ok(())
     }
 
+    /// identifies if the given source is a keyword
+    /// if not, it is an identifier
+    fn identify_keyword(&self, candidate: &[u8]) -> Result<TokenType, TaalError> {
+        // using the from_utf8 function to convert &[u8] to &str to make my life easier
+        // more appropriate way could be to match on &[u8] directly
+        // the downside of using from_utf8 is that it can fail, so we have to handle that error
+        if let Ok(s) = std::str::from_utf8(candidate) {
+            return match s {
+                "and" => Ok(TokenType::And),
+                "class" => Ok(TokenType::Class),
+                "else" => Ok(TokenType::Else),
+                "false" => Ok(TokenType::False),
+                "for" => Ok(TokenType::For),
+                "fun" => Ok(TokenType::Fun),
+                "if" => Ok(TokenType::If),
+                "nil" => Ok(TokenType::Nil),
+                "or" => Ok(TokenType::Or),
+                "print" => Ok(TokenType::Print),
+                "return" => Ok(TokenType::Return),
+                "super" => Ok(TokenType::Super),
+                "this" => Ok(TokenType::This),
+                "true" => Ok(TokenType::True),
+                "var" => Ok(TokenType::Var),
+                "while" => Ok(TokenType::While),
+                _ => Ok(TokenType::Identifier),
+            };
+        } 
+        Err(TaalError {
+            message: "Could not convert source keyword/identifier to Utf8".to_string(),
+            message_where: "".to_string(),
+            line: self.line,
+        })
+    }
+
     fn match_identifier(&mut self) -> Result<(), TaalError> {
-        // consume alphabetics or _'s, or digits
+        // consume alphabetics, _ or digits
         while self.peek(1).is_alpha() || self.peek(1).is_ascii_digit() {
             self.advance();
         }
 
-        self.add_token(TokenType::Identifier);
-        Ok(())
+        let value = &self.source[(self.start_of_lexeme)..self.current_in_lexeme + 1];
+        match self.identify_keyword(&value) {
+            Ok(token_type) => {
+                self.add_token(token_type);
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        }
     }
 
     fn scan_token(&mut self) -> Result<(), TaalError> {
@@ -186,7 +227,8 @@ impl Scanner {
             b'\n' => self.line += 1,
             b'"' => self.match_string()?, // match string literals
             c if c.is_ascii_digit() => self.match_number()?, // match numbers
-            c if c.is_alpha() => self.match_alpha()?,
+            c if c.is_alpha() => self.match_identifier()?, // match identifiers if first is
+            // alphabetic
             _ => {
                 return Err(TaalError {
                     message: "Literal unknown".to_string(),

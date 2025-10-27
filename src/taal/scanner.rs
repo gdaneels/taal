@@ -168,9 +168,9 @@ impl Scanner {
                 "true" => Ok(TokenType::True),
                 "var" => Ok(TokenType::Var),
                 "while" => Ok(TokenType::While),
-                _ => Ok(TokenType::Identifier),
+                _ => Ok(TokenType::Identifier), // match identifier
             };
-        } 
+        }
         Err(TaalError {
             message: "Could not convert source keyword/identifier to Utf8".to_string(),
             message_where: "".to_string(),
@@ -194,6 +194,32 @@ impl Scanner {
         }
     }
 
+    fn match_comment(&mut self) -> bool {
+        // match single line comments
+        if self.peek(1) == b'/' {
+            self.advance();
+            while (self.peek(1) != b'\n') && !self.peek_is_end(1) {
+                self.advance();
+            }
+            return true;
+        } else if self.peek(1) == b'*' {
+            // match multiple line comments
+            self.advance();
+            // keep going, can be multiple lines
+            while !self.peek_is_end(1) {
+                if self.peek(1) == b'\n' {
+                    self.line += 1;
+                } else if self.peek(1) == b'*' && self.peek(2) == b'/' {
+                    self.advance(); // go to  *
+                    self.advance(); // go to /
+                    return true;
+                }
+                self.advance();
+            }
+        }
+        false
+    }
+
     fn scan_token(&mut self) -> Result<(), TaalError> {
         let current_character = self.source[self.current_in_lexeme];
         match current_character {
@@ -212,12 +238,7 @@ impl Scanner {
             b'<' => self.match_and_add_token(b'=', TokenType::LessEqual, TokenType::Less),
             b'>' => self.match_and_add_token(b'=', TokenType::GreaterEqual, TokenType::Greater),
             b'/' => {
-                if self.peek(1) == b'/' {
-                    self.advance();
-                    while (self.peek(1) != b'\n') && !self.peek_is_end(1) {
-                        self.advance();
-                    }
-                } else {
+                if !self.match_comment() {
                     self.add_token(TokenType::Slash);
                 }
             }
